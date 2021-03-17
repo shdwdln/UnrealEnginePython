@@ -1,11 +1,27 @@
 #include "UEPyStaticMesh.h"
+#include "Engine/StaticMesh.h"
 
+PyObject *py_ue_static_mesh_get_bounds(ue_PyUObject *self, PyObject * args)
+{
+    ue_py_check(self);
+    UStaticMesh *mesh = ue_py_check_type<UStaticMesh>(self);
+    if (!mesh)
+        return PyErr_Format(PyExc_Exception, "uobject is not a UStaticMesh");
+
+    FBoxSphereBounds bounds = mesh->GetBounds();
+    UScriptStruct *u_struct = FindObject<UScriptStruct>(ANY_PACKAGE, UTF8_TO_TCHAR("BoxSphereBounds"));
+    if (!u_struct)
+    {
+        return PyErr_Format(PyExc_Exception, "unable to get BoxSphereBounds struct");
+    }
+    return py_ue_new_owned_uscriptstruct(u_struct, (uint8 *)&bounds);
+}
 
 #if WITH_EDITOR
 
-#include "Engine/StaticMesh.h"
 #include "Wrappers/UEPyFRawMesh.h"
 #include "Editor/UnrealEd/Private/GeomFitUtils.h"
+#include "FbxMeshUtils.h"
 
 static PyObject *generate_kdop(ue_PyUObject *self, const FVector *directions, uint32 num_directions)
 {
@@ -108,12 +124,39 @@ PyObject *py_ue_static_mesh_get_raw_mesh(ue_PyUObject *self, PyObject * args)
 
 	FRawMesh raw_mesh;
 
+#if ENGINE_MINOR_VERSION >= 24
+	if (lod_index < 0 || lod_index >= mesh->GetSourceModels().Num())
+		return PyErr_Format(PyExc_Exception, "invalid LOD index");
+
+	mesh->GetSourceModel(lod_index).RawMeshBulkData->LoadRawMesh(raw_mesh);
+#else
 	if (lod_index < 0 || lod_index >= mesh->SourceModels.Num())
 		return PyErr_Format(PyExc_Exception, "invalid LOD index");
 
 	mesh->SourceModels[lod_index].RawMeshBulkData->LoadRawMesh(raw_mesh);
+#endif
 
 	return py_ue_new_fraw_mesh(raw_mesh);
+}
+
+PyObject *py_ue_static_mesh_import_lod(ue_PyUObject *self, PyObject * args)
+{
+	ue_py_check(self);
+
+	char *filename;
+	int lod_level;
+	if (!PyArg_ParseTuple(args, "si:static_mesh_import_lod", &filename, &lod_level))
+		return nullptr;
+
+	UStaticMesh *mesh = ue_py_check_type<UStaticMesh>(self);
+	if (!mesh)
+		return PyErr_Format(PyExc_Exception, "uobject is not a UStaticMesh");
+
+	if (FbxMeshUtils::ImportStaticMeshLOD(mesh, FString(UTF8_TO_TCHAR(filename)), lod_level))
+	{
+		Py_RETURN_TRUE;
+	}
+	Py_RETURN_FALSE;
 }
 
 #endif

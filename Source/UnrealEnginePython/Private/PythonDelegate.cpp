@@ -1,6 +1,7 @@
 
 #include "PythonDelegate.h"
 #include "UEPyModule.h"
+#include "UEPyCallable.h"
 
 UPythonDelegate::UPythonDelegate()
 {
@@ -36,10 +37,18 @@ void UPythonDelegate::ProcessEvent(UFunction *function, void *Parms)
 		py_args = PyTuple_New(signature->NumParms);
 		Py_ssize_t argn = 0;
 
+#if ENGINE_MINOR_VERSION >= 25
+		TFieldIterator<FProperty> PArgs(signature);
+#else
 		TFieldIterator<UProperty> PArgs(signature);
+#endif
 		for (; PArgs && argn < signature->NumParms && ((PArgs->PropertyFlags & (CPF_Parm | CPF_ReturnParm)) == CPF_Parm); ++PArgs)
 		{
+#if ENGINE_MINOR_VERSION >= 25
+			FProperty *prop = *PArgs;
+#else
 			UProperty *prop = *PArgs;
+#endif
 			PyObject *arg = ue_py_convert_property(prop, (uint8 *)Parms, 0);
 			if (!arg)
 			{
@@ -62,7 +71,11 @@ void UPythonDelegate::ProcessEvent(UFunction *function, void *Parms)
 	// currently useless as events do not return a value
 	/*
 	if (signature_set) {
+#if ENGINE_MINOR_VERSION >= 25
+		FProperty *return_property = signature->GetReturnProperty();
+#else
 		UProperty *return_property = signature->GetReturnProperty();
+#endif
 		if (return_property && signature->ReturnValueOffset != MAX_uint16) {
 			if (!ue_py_convert_pyobject(ret, return_property, (uint8 *)Parms)) {
 				UE_LOG(LogPython, Error, TEXT("Invalid return value type for delegate"));
@@ -101,6 +114,12 @@ void UPythonDelegate::PyInputAxisHandler(float value)
 	Py_DECREF(ret);
 }
 
+bool UPythonDelegate::UsesPyCallable(PyObject *other)
+{
+    ue_PyCallable *other_callable = (ue_PyCallable*)other;
+    ue_PyCallable *this_callable = (ue_PyCallable*)py_callable;
+    return other_callable->u_function == this_callable->u_function && other_callable->u_target == this_callable->u_target;
+}
 
 UPythonDelegate::~UPythonDelegate()
 {

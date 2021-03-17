@@ -416,6 +416,7 @@ void FPythonSlateDelegate::MenuPyAssetBuilder(FMenuBuilder &Builder, TArray<FAss
 	Py_DECREF(ret);
 }
 
+
 TSharedRef<FExtender> FPythonSlateDelegate::OnExtendContentBrowserMenu(const TArray<FAssetData>& SelectedAssets)
 {
 	TSharedRef<FExtender> Extender(new FExtender());
@@ -426,6 +427,21 @@ TSharedRef<FExtender> FPythonSlateDelegate::OnExtendContentBrowserMenu(const TAr
 }
 
 #endif
+
+
+void FPythonSlateDelegate::SubMenuPyBuilder(FMenuBuilder &Builder)
+{
+	FScopePythonGIL gil;
+
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_fmenu_builder(Builder));
+	if (!ret)
+	{
+		unreal_engine_py_log_error();
+		return;
+	}
+	Py_DECREF(ret);
+}
+
 
 TSharedRef<SWidget> FPythonSlateDelegate::OnGenerateWidget(TSharedPtr<FPythonItem> py_item)
 {
@@ -756,9 +772,9 @@ FLinearColor FPythonSlateDelegate::GetterFLinearColor() const
 
 TSharedRef<SDockTab> FPythonSlateDelegate::SpawnPythonTab(const FSpawnTabArgs &args)
 {
+	FScopePythonGIL gil;
 	TSharedRef<SDockTab> dock_tab = SNew(SDockTab).TabRole(ETabRole::NomadTab);
-	PyObject *py_dock = (PyObject *)ue_py_get_swidget(dock_tab);
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_dock);
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", ue_py_get_swidget(dock_tab));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -1004,8 +1020,18 @@ public:
 	virtual void RegisterCommands() override
 	{
 		commands = MakeShareable(new FUICommandList);
-
+#if ENGINE_MINOR_VERSION >= 25
+		// probabaly not the way to do this Runtime/Slate/Public/Framework/Commands/Commands.h says to use FUICommandInfo::MakeCommandInfo
+		// - apparently only the macros are used for localization - ie this will not get localized
+		// not clear why the UI_COMMAND macro is not used here - which simply expands to the following call
+		MakeUICommand_InternalUseOnly(this, command, nullptr, *name, *name, TCHAR_TO_UTF8(*name), *name, *name, EUserInterfaceActionType::Button, FInputChord());
+#else
+#if ENGINE_MINOR_VERSION >= 23
+		MakeUICommand_InternalUseOnly(this, command, nullptr, *name, *name, TCHAR_TO_UTF8(*name), *name, *name, EUserInterfaceActionType::Button, FInputGesture());
+#else
 		UI_COMMAND_Function(this, command, nullptr, *name, *name, TCHAR_TO_UTF8(*name), *name, *name, EUserInterfaceActionType::Button, FInputGesture());
+#endif
+#endif
 		commands->MapAction(command, FExecuteAction::CreateRaw(this, &FPythonSlateCommands::Callback), FCanExecuteAction());
 	}
 
@@ -1321,6 +1347,7 @@ PyObject *py_unreal_engine_add_menu_bar_extension(PyObject * self, PyObject * ar
 	if (!PyCallable_Check(py_callable))
 		return PyErr_Format(PyExc_Exception, "argument is not callable");
 
+
 	TSharedRef<FPythonSlateCommands> *commands = new TSharedRef<FPythonSlateCommands>(new FPythonSlateCommands());
 
 	commands->Get().Setup(command_name, py_callable);
@@ -1332,8 +1359,7 @@ PyObject *py_unreal_engine_add_menu_bar_extension(PyObject * self, PyObject * ar
 
 	ExtensibleModule.GetMenuExtensibilityManager()->AddExtender(extender);
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 PyObject *py_unreal_engine_add_tool_bar_extension(PyObject * self, PyObject * args)
@@ -1400,7 +1426,8 @@ PyObject *py_unreal_engine_register_nomad_tab_spawner(PyObject * self, PyObject 
 
 	char *name;
 	PyObject *py_callable;
-	if (!PyArg_ParseTuple(args, "sO:register_nomad_tab_spawner", &name, &py_callable))
+	PyObject *py_icon = nullptr;
+	if (!PyArg_ParseTuple(args, "sO|O:register_nomad_tab_spawner", &name, &py_callable, &py_icon))
 	{
 		return NULL;
 	}
@@ -1412,14 +1439,33 @@ PyObject *py_unreal_engine_register_nomad_tab_spawner(PyObject * self, PyObject 
 	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewStaticSlateDelegate(py_callable);
 	spawn_tab.BindSP(py_delegate, &FPythonSlateDelegate::SpawnPythonTab);
 
-	FTabSpawnerEntry *spawner_entry = &FGlobalTabmanager::Get()->RegisterNomadTabSpawner(UTF8_TO_TCHAR(name), spawn_tab)
+	FName TabName = FName(UTF8_TO_TCHAR(name));
+
+	// avoid crash if re-registering the same tab
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(TabName);
+
+	FSlateIcon Icon = FSlateIcon();
+	if (py_icon)
+	{
+		ue_PyFSlateIcon *slate_icon = py_ue_is_fslate_icon(py_icon);
+		if (!slate_icon)
+		{
+			return PyErr_Format(PyExc_Exception, "argument is not a FSlateIcon");
+		}
+		Icon = slate_icon->icon;
+	}
+
+	FTabSpawnerEntry *SpawnerEntry = &FGlobalTabmanager::Get()->RegisterNomadTabSpawner(TabName, spawn_tab)
+		.SetDisplayName(FText::FromString((TabName).ToString()))
+		.SetTooltipText(FText::FromString((TabName).ToString()))
+		.SetIcon(Icon)
 		// TODO: more generic way to set the group
 #if WITH_EDITOR
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetDeveloperToolsMiscCategory())
 #endif
 		;
 
-	PyObject *ret = py_ue_new_ftab_spawner_entry(spawner_entry);
+	PyObject *ret = py_ue_new_ftab_spawner_entry(SpawnerEntry);
 	Py_INCREF(ret);
 	return ret;
 }

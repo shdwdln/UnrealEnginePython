@@ -14,11 +14,11 @@ public class UnrealEnginePython : ModuleRules
     // this is an example for Homebrew on Mac
     //private string pythonHome = "/usr/local/Cellar/python3/3.6.0/Frameworks/Python.framework/Versions/3.6/";
     // on Linux an include;libs syntax is expected:
-    //private string pythonHome = "/usr/local/include/python3.6;/usr/local/lib/libpython3.6.so"
+    //private string pythonHome = "/usr/local/include/python3.6;/usr/local/lib/libpython3.6.so";
 
     private string[] windowsKnownPaths =
     {
-        "C:/Program Files/Python37",
+       // "C:/Program Files/Python37",
         "C:/Program Files/Python36",
         "C:/Program Files/Python35",
         "C:/Python27",
@@ -39,6 +39,8 @@ public class UnrealEnginePython : ModuleRules
 
     private string[] linuxKnownIncludesPaths =
     {
+        "/usr/local/include/python3.8",
+        "/usr/local/include/python3.8m",
         "/usr/local/include/python3.7",
         "/usr/local/include/python3.7m",
         "/usr/local/include/python3.6",
@@ -46,6 +48,8 @@ public class UnrealEnginePython : ModuleRules
         "/usr/local/include/python3.5",
         "/usr/local/include/python3.5m",
         "/usr/local/include/python2.7",
+        "/usr/include/python3.8",
+        "/usr/include/python3.8m",
         "/usr/include/python3.7",
         "/usr/include/python3.7m",
         "/usr/include/python3.6",
@@ -57,6 +61,10 @@ public class UnrealEnginePython : ModuleRules
 
     private string[] linuxKnownLibsPaths =
     {
+        "/usr/local/lib/libpython3.8.so",
+        "/usr/local/lib/libpython3.8m.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython3.8.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython3.8m.so",
         "/usr/local/lib/libpython3.7.so",
         "/usr/local/lib/libpython3.7m.so",
         "/usr/local/lib/x86_64-linux-gnu/libpython3.7.so",
@@ -71,6 +79,10 @@ public class UnrealEnginePython : ModuleRules
         "/usr/local/lib/x86_64-linux-gnu/libpython3.5m.so",
         "/usr/local/lib/libpython2.7.so",
         "/usr/local/lib/x86_64-linux-gnu/libpython2.7.so",
+        "/usr/lib/libpython3.8.so",
+        "/usr/lib/libpython3.8m.so",
+        "/usr/lib/x86_64-linux-gnu/libpython3.8.so",
+        "/usr/lib/x86_64-linux-gnu/libpython3.8m.so",
         "/usr/lib/libpython3.7.so",
         "/usr/lib/libpython3.7m.so",
         "/usr/lib/x86_64-linux-gnu/libpython3.7.so",
@@ -95,12 +107,12 @@ public class UnrealEnginePython : ModuleRules
     {
 
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+        PublicDefinitions.Add("WITH_UNREALENGINEPYTHON=1"); // fixed
         string enableUnityBuild = System.Environment.GetEnvironmentVariable("UEP_ENABLE_UNITY_BUILD");
-        bFasterWithoutUnity = string.IsNullOrEmpty(enableUnityBuild);
+        bUseUnity = string.IsNullOrEmpty(enableUnityBuild);
 
         PublicIncludePaths.AddRange(
             new string[] {
-                "UnrealEnginePython/Public",
 				// ... add public include paths required here ...
             }
             );
@@ -108,7 +120,6 @@ public class UnrealEnginePython : ModuleRules
 
         PrivateIncludePaths.AddRange(
             new string[] {
-                "UnrealEnginePython/Private",
 				// ... add other private include paths required here ...
 			}
             );
@@ -119,7 +130,7 @@ public class UnrealEnginePython : ModuleRules
             {
                 "Core",
                 "Sockets",
-                "Networking"
+                "Networking",
 				// ... add other public dependencies that you statically link with here ...
 			}
             );
@@ -166,8 +177,8 @@ public class UnrealEnginePython : ModuleRules
             new string[]
             {
 				// ... add any modules that your module loads dynamically here ...
-			}
-            );
+            }
+        );
 
 #if WITH_FORWARDED_MODULE_RULES_CTOR
         if (Target.bBuildEditor)
@@ -175,6 +186,20 @@ public class UnrealEnginePython : ModuleRules
         if (UEBuildConfiguration.bBuildEditor)
 #endif
         {
+
+            PublicIncludePaths.AddRange(
+                new string[] {
+                    "Editor/Sequencer/Private",
+                }
+            );
+
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "Sequencer",
+                }
+            );
+
             PrivateDependencyModuleNames.AddRange(new string[]{
                 "UnrealEd",
                 "LevelEditor",
@@ -200,6 +225,11 @@ public class UnrealEnginePython : ModuleRules
                 "LandscapeEditor",
                 "MaterialEditor"
             });
+            if (Version.MinorVersion > 21)
+            {
+                PrivateDependencyModuleNames.Add("MeshDescription");
+                PrivateDependencyModuleNames.Add("StaticMeshDescription");
+            }
         }
 
         if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Win32))
@@ -215,7 +245,7 @@ public class UnrealEnginePython : ModuleRules
             System.Console.WriteLine("Using Python at: " + pythonHome);
             PublicIncludePaths.Add(pythonHome);
             string libPath = GetWindowsPythonLibFile(pythonHome);
-            PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
+            PublicSystemLibraryPaths.Add(Path.GetDirectoryName(libPath));
             PublicAdditionalLibraries.Add(libPath);
         }
         else if (Target.Platform == UnrealTargetPlatform.Mac)
@@ -231,7 +261,7 @@ public class UnrealEnginePython : ModuleRules
             System.Console.WriteLine("Using Python at: " + pythonHome);
             PublicIncludePaths.Add(pythonHome);
             string libPath = GetMacPythonLibFile(pythonHome);
-            PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
+            PublicAdditionalLibraries.Add(Path.GetDirectoryName(libPath));
             PublicDelayLoadDLLs.Add(libPath);
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
@@ -248,6 +278,7 @@ public class UnrealEnginePython : ModuleRules
                 {
                     throw new System.Exception("Unable to find Python libs, please add a search path to linuxKnownLibsPaths");
                 }
+                PublicIncludePaths.Add(Path.Combine(ModuleDirectory,"Include"));
                 PublicIncludePaths.Add(includesPath);
                 PublicAdditionalLibraries.Add(libsPath);
 
@@ -261,14 +292,15 @@ public class UnrealEnginePython : ModuleRules
         }
 #if WITH_FORWARDED_MODULE_RULES_CTOR
         else if (Target.Platform == UnrealTargetPlatform.Android)
-        {
+		{
             PublicIncludePaths.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/python35/include"));
-            PublicLibraryPaths.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/armeabi-v7a"));
+            PublicAdditionalLibraries.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/armeabi-v7a"));
             PublicAdditionalLibraries.Add("python3.5m");
 
             string APLName = "UnrealEnginePython_APL.xml";
-            string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), Target.RelativeEnginePath);
-            AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelAPLPath));
+            string RelAPLPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
+            AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(RelAPLPath, APLName));
+    
         }
 #endif
 
@@ -289,6 +321,11 @@ public class UnrealEnginePython : ModuleRules
         List<string> paths = new List<string>(knownPaths);
         paths.Insert(0, Path.Combine(ModuleDirectory, "../../Binaries", binaryPath));
         string environmentPath = System.Environment.GetEnvironmentVariable("PYTHONHOME");
+        if (!string.IsNullOrEmpty(environmentPath))
+            paths.Insert(0, environmentPath);
+
+        // look in an alternate custom location
+        environmentPath = System.Environment.GetEnvironmentVariable("UNREALENGINEPYTHONHOME");
         if (!string.IsNullOrEmpty(environmentPath))
             paths.Insert(0, environmentPath);
 

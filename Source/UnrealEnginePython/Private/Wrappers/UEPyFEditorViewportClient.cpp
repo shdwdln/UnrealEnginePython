@@ -37,6 +37,11 @@ static PyObject *py_ue_feditor_viewport_client_get_view_location(ue_PyFEditorVie
 	return py_ue_new_fvector(self->editor_viewport_client->GetViewLocation());
 }
 
+static PyObject *py_ue_feditor_viewport_client_get_view_rotation(ue_PyFEditorViewportClient *self, PyObject * args)
+{
+	return py_ue_new_frotator(self->editor_viewport_client->GetViewRotation());
+}
+
 static PyObject *py_ue_feditor_viewport_client_get_camera_speed(ue_PyFEditorViewportClient *self, PyObject * args)
 {
 	return PyFloat_FromDouble(self->editor_viewport_client->GetCameraSpeed());
@@ -84,6 +89,15 @@ static PyObject *py_ue_feditor_viewport_client_set_view_location(ue_PyFEditorVie
 	Py_RETURN_NONE;
 }
 
+static PyObject *py_ue_feditor_viewport_client_set_view_rotation(ue_PyFEditorViewportClient *self, PyObject * args)
+{
+	FRotator rot;
+	if (!py_ue_rotator_arg(args, rot))
+		return PyErr_Format(PyExc_Exception, "argument is not a FRotator");
+	self->editor_viewport_client->SetViewRotation(rot);
+	Py_RETURN_NONE;
+}
+
 static PyObject *py_ue_feditor_viewport_client_set_realtime(ue_PyFEditorViewportClient *self, PyObject * args)
 {
 	PyObject* bInRealtime;
@@ -91,8 +105,24 @@ static PyObject *py_ue_feditor_viewport_client_set_realtime(ue_PyFEditorViewport
 	if (!PyArg_ParseTuple(args, "OO", &bInRealtime, &bStoreCurrentValue))
 		return nullptr;
 
+#if ENGINE_MINOR_VERSION >= 25
+	// UE4.25 split this setting to 2 separate functions
+	if (PyObject_IsTrue(bStoreCurrentValue))
+	{
+		//Persist across editor sessions
+		self->editor_viewport_client->SetRealtime(PyObject_IsTrue(bInRealtime) ? true : false);
+	}
+	else
+	{
+		//Don't persist across editor sessions
+		FText OverrideSourceText;
+		OverrideSourceText.FromString(TEXT("UnrealEnginePython plugin script"));
+		self->editor_viewport_client->SetRealtimeOverride(PyObject_IsTrue(bInRealtime) ? true : false, OverrideSourceText);
+	}
+#else
 	self->editor_viewport_client->SetRealtime(PyObject_IsTrue(bInRealtime) ? true : false,
 		PyObject_IsTrue(bStoreCurrentValue) ? true : false);
+#endif
 	Py_RETURN_NONE;
 }
 
@@ -101,12 +131,14 @@ static PyMethodDef ue_PyFEditorViewportClient_methods[] = {
 	{ "tick", (PyCFunction)py_ue_feditor_viewport_client_tick, METH_VARARGS, "" },
 	{ "get_look_at_location", (PyCFunction)py_ue_feditor_viewport_client_get_look_at_location, METH_VARARGS, "" },
 	{ "get_view_location", (PyCFunction)py_ue_feditor_viewport_client_get_view_location, METH_VARARGS, "" },
+	{ "get_view_rotation", (PyCFunction)py_ue_feditor_viewport_client_get_view_location, METH_VARARGS, "" },
 	{ "get_camera_speed", (PyCFunction)py_ue_feditor_viewport_client_get_camera_speed, METH_VARARGS, "" },
 	{ "get_viewport_dimensions", (PyCFunction)py_ue_feditor_viewport_client_get_viewport_dimensions, METH_VARARGS, "" },
 	{ "is_visible", (PyCFunction)py_ue_feditor_viewport_client_is_visible, METH_VARARGS, "" },
 	{ "get_scene_depth_at_location", (PyCFunction)py_ue_feditor_viewport_client_get_scene_depth_at_location, METH_VARARGS, "" },
 	{ "set_look_at_location", (PyCFunction)py_ue_feditor_viewport_client_set_look_at_location, METH_VARARGS, "" },
 	{ "set_view_location", (PyCFunction)py_ue_feditor_viewport_client_set_view_location, METH_VARARGS, "" },
+	{ "set_view_rotation", (PyCFunction)py_ue_feditor_viewport_client_set_view_rotation, METH_VARARGS, "" },
 	{ "set_realtime", (PyCFunction)py_ue_feditor_viewport_client_set_realtime, METH_VARARGS, "" },
 	{ nullptr }  /* Sentinel */
 };

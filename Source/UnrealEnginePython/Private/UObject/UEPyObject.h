@@ -24,7 +24,17 @@ PyObject *py_ue_properties(ue_PyUObject *, PyObject *);
 PyObject *py_ue_call(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property_array_dim(ue_PyUObject *, PyObject *);
+#if ENGINE_MINOR_VERSION >= 25
+PyObject *py_ue_get_fproperty(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_inner(ue_PyFProperty *, PyObject *);
+PyObject *py_ue_get_key_prop(ue_PyFProperty *, PyObject *);
+PyObject *py_ue_get_value_prop(ue_PyFProperty *, PyObject *);
+#else
 PyObject *py_ue_get_uproperty(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_inner(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_key_prop(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_value_prop(ue_PyUObject *, PyObject *);
+#endif
 PyObject *py_ue_get_property_class(ue_PyUObject *, PyObject *);
 PyObject *py_ue_has_property(ue_PyUObject *, PyObject *);
 PyObject *py_ue_is_rooted(ue_PyUObject *, PyObject *);
@@ -38,6 +48,8 @@ PyObject *py_ue_is_owned(ue_PyUObject *, PyObject *);
 PyObject *py_ue_save_config(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_get_cdo(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_archetype(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_archetype_instances(ue_PyUObject *, PyObject *);
 PyObject *py_ue_enum_values(ue_PyUObject *, PyObject *);
 PyObject *py_ue_enum_names(ue_PyUObject *, PyObject *);
 #if ENGINE_MINOR_VERSION >= 15
@@ -46,12 +58,15 @@ PyObject *py_ue_enum_user_defined_names(ue_PyUObject *, PyObject *);
 
 
 PyObject *py_ue_bind_event(ue_PyUObject *, PyObject *);
+PyObject *py_ue_unbind_event(ue_PyUObject *, PyObject *);
 PyObject *py_ue_add_function(ue_PyUObject *, PyObject *);
 PyObject *py_ue_add_property(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_as_dict(ue_PyUObject *, PyObject *);
 
+#if WITH_EDITOR
 PyObject *py_ue_can_modify(ue_PyUObject *, PyObject *);
+#endif
 
 PyObject *py_ue_get_outer(ue_PyUObject *, PyObject *);
 PyObject *py_ue_set_outer(ue_PyUObject *, PyObject *);
@@ -91,6 +106,12 @@ PyObject *py_ue_asset_reimport(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_metadata(ue_PyUObject *, PyObject *);
 PyObject *py_ue_set_metadata(ue_PyUObject *, PyObject *);
 PyObject *py_ue_has_metadata(ue_PyUObject *, PyObject *);
+
+PyObject *py_ue_get_metadata_tag(ue_PyUObject *, PyObject *);
+PyObject *py_ue_set_metadata_tag(ue_PyUObject *, PyObject *);
+PyObject *py_ue_has_metadata_tag(ue_PyUObject *, PyObject *);
+PyObject *py_ue_remove_metadata_tag(ue_PyUObject *, PyObject *);
+PyObject *py_ue_metadata_tags(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_import_custom_properties(ue_PyUObject *, PyObject *);
 #endif
