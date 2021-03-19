@@ -41,6 +41,9 @@
 #include "UObject/UEPyExporter.h"
 #include "UObject/UEPyFoliage.h"
 
+// UEPyUsdStageActor
+#include "UObject/UEPyUsdStageActor.h"
+
 #ifdef EXTRA_DEBUG_CODE
 #include "Editor/BlueprintGraph/Classes/K2Node_DynamicCast.h"
 #endif
@@ -531,8 +534,13 @@ static PyMethodDef unreal_engine_methods[] = {
 
 static PyMethodDef ue_PyUObject_methods[] = {
 
-	// Transform
+	// UsdStageActor
+	{ "usd_reset", (PyCFunction)py_ue_usd_reset, METH_VARARGS, "" },
+	{ "load_usd_stage", (PyCFunction)py_ue_load_usd_stage, METH_VARARGS, "" },
+	{ "update_stage", (PyCFunction)py_ue_update_stage, METH_VARARGS, "" },
+	{ "call_on_stage_changed", (PyCFunction)py_ue_call_on_stage_changed, METH_VARARGS, "" },
 
+	// Transform
 	{ "get_actor_location", (PyCFunction)py_ue_get_actor_location, METH_VARARGS, "" },
 	{ "get_actor_rotation", (PyCFunction)py_ue_get_actor_rotation, METH_VARARGS, "" },
 	{ "get_actor_scale", (PyCFunction)py_ue_get_actor_scale, METH_VARARGS, "" },

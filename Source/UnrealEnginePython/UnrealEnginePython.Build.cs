@@ -132,7 +132,19 @@ public class UnrealEnginePython : ModuleRules
                 "Sockets",
                 "Networking",
 				// ... add other public dependencies that you statically link with here ...
-			}
+                // Extra Dependencies for USDImporter Plugin
+                "GeometryCacheUSD",
+                "UnrealUSDWrapper",
+                "USDClasses",
+                "USDExporter",
+                "USDImporter",
+                "USDSchemas",
+                "USDStage",
+                "USDStageEditor",
+                "USDStageEditorViewModels",
+                "USDStageImporter",
+                "USDUtilities",
+            }
             );
 
 
@@ -155,9 +167,21 @@ public class UnrealEnginePython : ModuleRules
                 "MovieSceneCapture",
                 "Landscape",
                 "Foliage",
-                "AIModule"
+                "AIModule",
 				// ... add private dependencies that you statically link with here ...
-			}
+                // Extra Dependencies for USDImporter Plugin
+                "GeometryCacheUSD",
+                "UnrealUSDWrapper",
+                "USDClasses",
+                "USDExporter",
+                "USDImporter",
+                "USDSchemas",
+                "USDStage",
+                "USDStageEditor",
+                "USDStageEditorViewModels",
+                "USDStageImporter",
+                "USDUtilities",
+            }
             );
 
 
@@ -223,7 +247,19 @@ public class UnrealEnginePython : ModuleRules
                 "Persona",
                 "PropertyEditor",
                 "LandscapeEditor",
-                "MaterialEditor"
+                "MaterialEditor",
+                // Extra Dependencies for USDImporter Plugin
+                "GeometryCacheUSD",
+                "UnrealUSDWrapper",
+                "USDClasses",
+                "USDExporter",
+                "USDImporter",
+                "USDSchemas",
+                "USDStage",
+                "USDStageEditor",
+                "USDStageEditorViewModels",
+                "USDStageImporter",
+                "USDUtilities",
             });
             if (Version.MinorVersion > 21)
             {
