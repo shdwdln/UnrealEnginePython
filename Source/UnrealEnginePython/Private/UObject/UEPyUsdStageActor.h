@@ -28,10 +28,13 @@ typedef struct
 } ue_PyUEFUsdStage;
 
 //extern PyTypeObject ue_PyUEFUsdStageType;
+PyObject* py_ue_load_usd_stage(ue_PyUObject*, PyObject*);
+PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args);
+PyObject* py_ue_get_variant_names_from_variant(ue_PyUObject* self, PyObject* args);
+
 
 PyObject* py_ue_new_uefusdstage(UE::FUsdStage);
 PyObject* py_ue_usd_reset(ue_PyUObject*, PyObject*);
-PyObject* py_ue_load_usd_stage(ue_PyUObject*, PyObject*);
 PyObject* py_ue_get_usd_prim_twin(ue_PyUObject*, PyObject*);
 PyObject* py_ue_call_on_stage_changed(ue_PyUObject*, PyObject*);
 PyObject* py_ue_update_stage(ue_PyUObject*, PyObject*);
