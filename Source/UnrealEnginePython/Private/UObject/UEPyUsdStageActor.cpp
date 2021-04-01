@@ -55,6 +55,21 @@
 #include "pxr/usd/usdShade/tokens.h"
 #include "pxr/usd/usdUtils/stageCache.h"
 
+#include "pxr/usd/usd/prim.h"
+#include "pxr/usd/usd/primFlags.h"
+#include "pxr/usd/usd/primRange.h"
+
+//#include "pxr/usd/pcp/layerStackRegistry.h"
+#include "pxr/usd/pcp/layerStack.h"
+#include "pxr/usd/pcp/layerStackIdentifier.h"
+
+#include "pxr/usd/ar/resolver.h"
+#include "pxr/usd/sdf/layerUtils.h"
+#include "pxr/base/tf/staticData.h"
+
+
+#include "node.h"
+
 
 #include "USDIncludesEnd.h"
 
@@ -478,115 +493,6 @@ void fusd_prim_get_children_recursive(UE::FUsdPrim &usdPrim, bool exhaustiveDebu
 
 
 
-
-//==============================================================================
-// UE::FUsdPrim
-/*
-PyObject* __LogPrimTreeHelper(const std::string& Concat, const UsdPrim& Prim)
-{
-	std::string TypeName = Prim.GetTypeName().GetString();
-	bool bIsModel = Prim.IsModel();
-	bool bIsAbstract = Prim.IsAbstract();
-	bool bIsGroup = Prim.IsGroup();
-	bool bIsInstance = Prim.IsInstance();
-	bool bIsActive = Prim.IsActive();
-	bool bInMaster = Prim.IsInMaster();
-	bool bIsMaster = Prim.IsMaster();
-
-	UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] __LogPrimTreeHelper:      %s"), *pseudoRootName.ToString()); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
-
-	std::string currentLog = string(Concat + "Prim: [%s] %s Model:%d Abstract:%d Group:%d Instance:%d(Master:%s) Active:%d InMaster:%d IsMaster:%d\n").c_str(),
-		TypeName.c_str(),
-		Prim.GetName().GetText(),
-		bIsModel,
-		bIsAbstract,
-		bIsGroup,
-		bIsInstance,
-		bIsInstance ? Prim.GetMaster().GetName().GetString().c_str() : "",
-		bIsActive,
-		bInMaster,
-		bIsMaster;
-
-	
-
-	{
-		UsdMetadataValueMap Metadata = Prim.GetAllMetadata();
-		if (Metadata.size())
-		{
-			Log(string(Concat + "\tMetaData:\n").c_str());
-			for (auto KeyValue : Metadata)
-			{
-				Log(string(Concat + "\t\t[%s] %s\n").c_str(), KeyValue.second.GetTypeName().c_str(), KeyValue.first.GetText());
-			}
-		}
-
-		vector<UsdRelationship> Relationships = Prim.GetRelationships();
-		if (Relationships.size())
-		{
-			Log(string(Concat + "\tRelationships:\n").c_str());
-			for (const UsdRelationship& Relationship : Relationships)
-			{
-				SdfPathVector Targets;
-				Relationship.GetTargets(&Targets);
-
-				for (SdfPath& Path : Targets)
-				{
-					Log(string(Concat + "\t\t%s\n").c_str(), Path.GetString().c_str());
-				}
-			}
-		}
-
-
-		vector<UsdAttribute> Attributes = Prim.GetAttributes();
-		if (Attributes.size())
-		{
-			Log(string(Concat + "\tAttributes:\n").c_str());
-			for (const UsdAttribute& Attribute : Attributes)
-			{
-				if (Attribute.IsAuthored())
-				{
-					Log(string(Concat + "\t\t[%s] %s %s\n").c_str(), Attribute.GetTypeName().GetAsToken().GetText(), Attribute.GetBaseName().GetText(), Attribute.GetDisplayName().c_str());
-				}
-			}
-		}
-
-		if (Prim.HasVariantSets())
-		{
-			Log(string(Concat + "\tVariant Sets:\n").c_str());
-			UsdVariantSets VariantSets = Prim.GetVariantSets();
-			vector<string> SetNames = VariantSets.GetNames();
-			for (const string& SetName : SetNames)
-			{
-				Log(string(Concat + "\t\t%s:\n").c_str(), SetName.c_str());
-
-				UsdVariantSet Set = Prim.GetVariantSet(SetName);
-
-				vector<string> VariantNames = Set.GetVariantNames();
-				for (const string& VariantName : VariantNames)
-				{
-					char ActiveChar = ' ';
-					if (Set.GetVariantSelection() == VariantName)
-					{
-						ActiveChar = '*';
-					}
-					Log(string(Concat + "\t\t\t%s%c\n").c_str(), VariantName.c_str(), ActiveChar);
-				}
-			}
-		}
-	}
-
-
-	for (const UsdPrim& Child : Prim.GetChildren())
-	{
-		__LogPrimTreeHelper(Concat + "\t", Child);
-	}
-
-	//Log("\n");
-	// ------------
-	Py_RETURN_NONE;
-}
-
-*/
 // =======================================================================
 // ------------------
 PyObject* py_ue_get_variant_names_from_variant(ue_PyUObject* self, PyObject* args)
@@ -617,7 +523,7 @@ PyObject* py_ue_get_variant_names_from_variant(ue_PyUObject* self, PyObject* arg
 	//UEPyUnicode_AsUTF8(prim_type_name)
 	UE::FUsdPrim UsdPrim = pUsdStage.GetPrimAtPath(UE::FSdfPath(UTF8_TO_TCHAR(sPrimPath)));
 
-	PyObject* variant_names = PyList_New(0);
+	
 
 	// If UsdPrim exists and has variant sets
 	if (UsdPrim && UsdPrim.HasVariantSets()) {
@@ -625,32 +531,80 @@ PyObject* py_ue_get_variant_names_from_variant(ue_PyUObject* self, PyObject* arg
 		//pxr::UsdPrim pxrUsdPrim = pxr::UsdPrim(UsdPrim);
 		UE_LOG(LogPython, Warning, TEXT("[py_ue_get_variant_names_from_variant] UsdPrim && UsdPrim.HasVariantSets()..."));
 
-		// Create New List for the Variant Set Variant Names
-		//PyObject* variant_set_name_variants_pylist = PyList_New(0);
-	
-		//std::vector< std::string > UsdVariantNames = pxr::UsdPrim(UsdPrim).GetVariantSet(sPrimVarSetName).GetVariantNames();
-
-		//pxrUsdPrim.GetVariantSet(sPrimVarSetName)
-
 		// [UsdVariantSet] --------------------------
 		pxr::UsdVariantSet UsdVariantSet = pxr::UsdPrim(UsdPrim).GetVariantSet(sPrimVarSetName);
 
 		std::vector<std::string> UsdVariantNames = UsdVariantSet.GetVariantNames();
 
+
+		//PyObject* UsdVariantNameslistObj = PyList_New(UsdVariantNames.size());
+		// variant_names_pylist
+		PyObject* variant_names_pylist = PyList_New(0);
+		//return variant_names_pylist;
+
 		for (size_t i = 0; i < UsdVariantNames.size(); ++i) {
 			const std::string& UsdVariantName = UsdVariantNames[i];
 			UE_LOG(LogPython, Warning, TEXT("\t\t [%s] UsdVariantName: %s"), UTF8_TO_TCHAR(sPrimVarSetName), UTF8_TO_TCHAR(UsdVariantName.c_str()));
+			PyList_Append(variant_names_pylist, PyUnicode_FromString(UsdVariantName.c_str()));
 
-			/*std::vector<std::string>::const_iterator oldValuesIt =
-				std::find(oldValues.begin(), oldValues.end(), newLayer);
-			if (oldValuesIt == oldValues.end()) {
-				continue;
+		}
+
+		return variant_names_pylist;
+
+		//	/*std::vector<std::string>::const_iterator oldValuesIt =
+		//		std::find(oldValues.begin(), oldValues.end(), newLayer);
+		//	if (oldValuesIt == oldValues.end()) {
+		//		continue;
+		//	}
+
+		//	const size_t oldLayerOffsetIndex =
+		//		std::distance(oldValues.begin(), oldValuesIt);
+		//	newLayerOffsets[i] = oldLayerOffsets[oldLayerOffsetIndex];*/
+		//}
+
+		/*
+		if (UsdVariantNameslistObj) {
+			//throw logic_error("Unable to allocate memory for Python list");
+			for (unsigned int i = 0; i < UsdVariantNames.size(); i++) {
+				const std::string& UsdVariantName = UsdVariantNames[i];
+
+				PyObject* variant_name = PyUnicode_FromString(UsdVariantName.c_str());
+				if (variant_name) {
+					//PyList_Append(variant_set_name_variants_pylist, PyUnicode_FromString(VariantName.c_str()));
+					PyList_SET_ITEM(UsdVariantNameslistObj, i, variant_name);
+					//Py_DECREF(listObj);
+					//throw logic_error("Unable to allocate memory for Python list");
+				}
+				
 			}
 
-			const size_t oldLayerOffsetIndex =
-				std::distance(oldValues.begin(), oldValuesIt);
-			newLayerOffsets[i] = oldLayerOffsets[oldLayerOffsetIndex];*/
+			return UsdVariantNameslistObj;
+
 		}
+
+		else {
+			// variant_names_pylist
+			PyObject* variant_names_pylist = PyList_New(0);
+			return variant_names_pylist;
+		}
+		*/
+
+
+
+		//for (size_t i = 0; i < UsdVariantNames.size(); ++i) {
+		//	const std::string& UsdVariantName = UsdVariantNames[i];
+		//	UE_LOG(LogPython, Warning, TEXT("\t\t [%s] UsdVariantName: %s"), UTF8_TO_TCHAR(sPrimVarSetName), UTF8_TO_TCHAR(UsdVariantName.c_str()));
+
+		//	/*std::vector<std::string>::const_iterator oldValuesIt =
+		//		std::find(oldValues.begin(), oldValues.end(), newLayer);
+		//	if (oldValuesIt == oldValues.end()) {
+		//		continue;
+		//	}
+
+		//	const size_t oldLayerOffsetIndex =
+		//		std::distance(oldValues.begin(), oldValuesIt);
+		//	newLayerOffsets[i] = oldLayerOffsets[oldLayerOffsetIndex];*/
+		//}
 		
 		//for (const std::string& UsdVariantName : UsdVariantNames) {
 
@@ -694,7 +648,12 @@ PyObject* py_ue_get_variant_names_from_variant(ue_PyUObject* self, PyObject* arg
 
 	}
 
-	return variant_names;
+	
+	// variant_names_pylist
+	PyObject* variant_names_pylist = PyList_New(0);
+	return variant_names_pylist;
+	
+	
 	//Py_RETURN_NONE;
 	
 }
@@ -728,9 +687,14 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 	FString fsPseudoRootName = pseudoRootName.ToString();
 	FString fsPseudoRootTypeName = pseudoRootTypeName.ToString();
 
-	// FName(UTF8_TO_TCHAR(name)
-	UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] pseudoRootName:      %s"), *pseudoRootName.ToString()); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
-	UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] pseudoRootTypeName : %s"), *pseudoRootTypeName.ToString()); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+	bool debug = false;
+
+	if (debug) {
+		// FName(UTF8_TO_TCHAR(name)
+		UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] pseudoRootName:      %s"), *pseudoRootName.ToString()); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+		UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] pseudoRootTypeName : %s"), *pseudoRootTypeName.ToString()); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+	}
+	
 
 	// ---------------------------
 	// Create new PyDict 
@@ -767,7 +731,8 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 	UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][pre] fusd_prim_get_children_recursive()"));
 	fusd_prim_get_children_recursive(pseudoRoot, false, ret);// , py_dict);
 
-	// -------------------------
+	// ===========================================================
+	// ===========================================================
 	Py_ssize_t ret_size;
 	ret_size = PyList_Size(ret);
 	PyObject* dict_item;
@@ -790,19 +755,29 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 		PyObject* prim_type_name = PyDict_GetItemString(dict_item, "prim_type_name");//, PyUnicode_FromString(sPrimTypeName.c_str()));
 		PyObject* prim_path_name = PyDict_GetItemString(dict_item, "prim_path");//, PyUnicode_FromString(sPrimPath.c_str()));
 
+
+		// Reference to UsdStage loaded into memory
+		pxr::UsdStageRefPtr pUsdStageRefPtr = static_cast<pxr::UsdStageRefPtr&>(pUsdStage);
+
 		// Check if the prim_name is in PyUnicode (which it should be)
 		if (PyUnicode_Check(prim_name)) {
-			UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] prim_name_is_unicode: %s"), i + 1, num_items, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_name)));
+			if (debug) {
+				UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] prim_name_is_unicode: %s"), i + 1, num_items, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_name)));
+			}
 		}
 
 		// Check if the prim_type_name is in PyUnicode (which it should be)
 		if (PyUnicode_Check(prim_type_name)) {
-			UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] prim_type_name_is_unicode: %s"), i + 1, num_items, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_type_name)));
+			if (debug) {
+				UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] prim_type_name_is_unicode: %s"), i + 1, num_items, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_type_name)));
+			}
 		}
 
 		// Check if the prim_path_name is in PyUnicode (which it should be)
 		if (PyUnicode_Check(prim_path_name)) {
-			UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] prim_path_name_is_unicode: %s"), i + 1, num_items, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_path_name)));
+			if (debug) {
+				UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] prim_path_name_is_unicode: %s"), i + 1, num_items, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_path_name)));
+			}
 
 			//UEPyUnicode_AsUTF8(prim_type_name)
 			UE::FUsdPrim UsdPrim = pUsdStage.GetPrimAtPath(UE::FSdfPath( UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(prim_path_name) )));
@@ -810,13 +785,19 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 			// If UsdPrim exists and has variant sets
 			if (UsdPrim && UsdPrim.HasVariantSets()){
 
-				pxr::UsdPrim pxrUsdPrim = pxr::UsdPrim(UsdPrim);
-			
-				UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] UsdPrim && UsdPrim.HasVariantSets()..."), i + 1, num_items);
+				//pxr::UsdPrim pxrUsdPrim = pxr::UsdPrim(UsdPrim);
+				pxr::UsdPrim pxrUsdPrim = static_cast<const pxr::UsdPrim&>(UsdPrim);
+
+
+				if (debug) {
+					UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][%d/%d] UsdPrim && UsdPrim.HasVariantSets()..."), i + 1, num_items);
+				}
 
 				// Get the variant sets
 				//pxr::UsdVariantSets UsdVariantSets = pxr::UsdPrim(UsdPrim).GetVariantSets();
-				pxr::UsdVariantSets UsdVariantSets = pxrUsdPrim.GetVariantSets();
+				//pxr::UsdVariantSets UsdVariantSets = pxrUsdPrim.GetVariantSets();
+				
+				pxr::UsdVariantSets UsdVariantSets = static_cast<const pxr::UsdPrim&>(UsdPrim).GetVariantSets();
 
 				// Create a new std::vector of std::string
 				UsdVariantSets.GetNames(&UsdVariantSetsNames);
@@ -836,43 +817,126 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 					//FUsdVariantSetViewModel VariantSet(this);
 					//VariantSet.SetName = UsdToUnreal::ConvertString(UsdVariantSetName.c_str());
 					//UE_LOG(LogPython, Warning, TEXT("\t\t SetName:  %s"), UTF8_TO_TCHAR(UsdVariantSetName.c_str())); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
-					UE_LOG(LogPython, Warning, TEXT("\t\t [%s] ----------------------------"), UTF8_TO_TCHAR(UsdVariantSetName.c_str()) ); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+					if (debug) {
+						UE_LOG(LogPython, Warning, TEXT("\t\t [%s] ----------------------------"), UTF8_TO_TCHAR(UsdVariantSetName.c_str())); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+					}
 
-					//Log(string(Concat + "\t\t%s:\n").c_str(), SetName.c_str());
-
-					// -----------------------------------------
-					// Get the UsdVariantSet
-					//pxr::UsdVariantSet Set = pxr::UsdPrim(UsdPrim).GetVariantSet(UsdVariantSetName);
-					//
-					// Populate the VariantNames std::vector
-					//UsdVariantNames = Set.GetVariantNames();
-					// ------------------------------------------
 
 					// Create New List for the Variant Set Variant Names
 					PyObject* variant_set_name_variants_pylist = PyList_New(0);
 
-					bool skipGettingVariantSetVariantNames = true;
+					bool skipGettingVariantSetVariantNames = false;
 					if (!skipGettingVariantSetVariantNames) {
+
+						
+						std::set<std::string> namesSet;
+
+						if (pxrUsdPrim) {
+							if (debug) {
+								UE_LOG(LogPython, Warning, TEXT("\t\t [%s] pxrUsdPrim is valid."), UTF8_TO_TCHAR(UsdVariantSetName.c_str())); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+							}
+
+							TF_REVERSE_FOR_ALL(_i, pxrUsdPrim.GetPrimIndex().GetNodeRange()) {
+																
+								// Get the SdfPath for the current iter node
+								pxr::SdfPath sdfPath = _i->GetPath();
+
+								bool isPrimVariantSelectionPath = sdfPath.IsPrimVariantSelectionPath();
+								bool isPrimOrPrimVariantSelectionPath = sdfPath.IsPrimOrPrimVariantSelectionPath();
+								bool containsPrimVariantSelection = sdfPath.ContainsPrimVariantSelection();
+								//std::string asString = sdfPath.GetAsString();
+								const std::string asString = sdfPath.GetString();
+
+								// Is this a primitive or primitive variant selection SdfPath?
+								if (isPrimOrPrimVariantSelectionPath) {
+
+									// Does this path have a variant selection for the prim?
+									//UE_LOG(LogPython, Warning, TEXT("\t\t  asString: %s ----------------------"), UTF8_TO_TCHAR(asString.c_str()));
+									//UE_LOG(LogPython, Warning, TEXT("\t\t isPrimOrPrimVariantSelectionPath: true"));
+									if (isPrimVariantSelectionPath) {
+										if (debug) {
+											UE_LOG(LogPython, Warning, TEXT("\t\t isPrimVariantSelectionPath: true"));
+										}
+									}
+									else
+									{
+										//GetLayerStack
+										pxr::PcpLayerStackRefPtr layerStackRefPtr = pxr::PcpNodeRef(*_i).GetLayerStack();
+
+										// SdfChildrenKeys is a struct with mappings
+										static const pxr::TfToken field = pxr::TfToken("variantChildren"); //SdfChildrenKeys->VariantChildren;
+										const pxr::SdfPath vsetPath = sdfPath.AppendVariantSelection(UsdVariantSetName, "");
+										pxr::TfTokenVector vsetNames;
+
+										// -----------------------------------------------
+										// SdfLayerRefPtrVector & 	GetLayers () const
+										// -----------------------------------------------
+										// Go through each layer
+										pxr::SdfLayerRefPtrVector sdfLayers = layerStackRefPtr->GetLayers();
+										for (auto const& layer : sdfLayers) {
+
+											// Check if it has a Field
+											if (layer->HasField(vsetPath, field, &vsetNames)) {
+												TF_FOR_ALL(name, vsetNames) {
+													//std::string const& resultName = name->GetString();
+													const std::string& resultName = name->GetString();
+													if (debug) {
+														//result->insert(name->GetString());
+														UE_LOG(LogPython, Warning, TEXT("\t\t [variant] resultName: %s"), UTF8_TO_TCHAR(resultName.c_str()));
+													}
+
+													PyList_Append(variant_set_name_variants_pylist, PyUnicode_FromString(resultName.c_str()));
+												}
+											}
+
+										}//for each SdfLayer
+
+										//UE_LOG(LogPython, Warning, TEXT("\t\t [post] -----------------"));
+
+									}// endif else
+
+								}//endif is prim or prim variant path
+								
+							}
+
+							//std::vector<std::string> UsdVariantNames = std::vector<std::string>(namesSet.begin(), namesSet.end());
+							//UE_LOG(LogPython, Warning, TEXT("\t\t [%s] successfully got variants in std::map... (%d items)"), UTF8_TO_TCHAR(UsdVariantSetName.c_str()), namesSet.size());
+
+
+							/*
+							for (std::set<std::string>::iterator it = namesSet.begin(); it != namesSet.end(); ++it) {
+								std::string currentVariantName = *it;
+								UE_LOG(LogPython, Warning, TEXT("\t\t [%s] successfully got variantName..."), UTF8_TO_TCHAR(UsdVariantSetName.c_str()));
+								//UE_LOG(LogPython, Warning, TEXT("\t\t [%s] successfully got variantName..."), UTF8_TO_TCHAR(UsdVariantSetName.c_str()), UTF8_TO_TCHAR(VariantName.c_str())); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+								//PyList_Append(variant_set_name_variants_pylist, PyUnicode_FromString(currentVariantName.c_str()));
+
+							}
+							*/
+
+						}//if pxrUsdPrim is valid
+
+						
+
 
 
 						//pxr::UsdVariantSet UsdVariantSet = pxr::UsdPrim(UsdPrim).GetVariantSet(UsdVariantSetName.c_str());
 						//UsdVariantNames = pxr::UsdPrim(UsdPrim).GetVariantSet(UsdVariantSetName.c_str()).GetVariantNames();
-						UsdVariantNames = pxrUsdPrim.GetVariantSet(UsdVariantSetName.c_str()).GetVariantNames();
+						//UsdVariantNames = pxrUsdPrim.GetVariantSet(UsdVariantSetName.c_str()).GetVariantNames();
+						//UsdVariantNames = static_cast<const pxr::UsdPrim&>(UsdPrim).GetVariantSet(UsdVariantSetName.c_str()).GetVariantNames();
+
+						// ----------------------------------------------------
+						//std::vector<std::string> vUsdVariantNames = static_cast<const pxr::UsdPrim&>(UsdPrim).GetVariantSet(UsdVariantSetName).GetVariantNames();
+
 						//std::vector< std::string > VariantNames = UsdVariantSet.GetVariantNames();
 					
 					
-					
+						/*
 						//for (size_t j = 0; j < VariantNames.size(); ++j)
 						//for (const std::string& VariantName : VariantNames)
 						//for (auto it = myvector.begin(); it != myvector.end(); ++it)
 						//for (size_t j = 0; j < UsdVariantNames.size(); ++j)
 						for (auto it = UsdVariantNames.begin(); it != UsdVariantNames.end(); ++it)
 						{
-							//char ActiveChar = ' ';
-							//if (Set.GetVariantSelection() == VariantName)
-							//{
-							//	ActiveChar = '*';
-							//}
 							//const std::string& VariantName = UsdVariantNames.at(j);
 							const std::string& VariantName = *it;
 						
@@ -882,12 +946,12 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 							//PyList_Append(pyList, local_prim_data);
 							PyList_Append(variant_set_name_variants_pylist, PyUnicode_FromString(VariantName.c_str()));
 						}
+						*/
 
-						UsdVariantNames.clear();
+						//UsdVariantNames.clear();
 
 					}
 					
-
 					PyDict_SetItemString(local_var_set, UsdVariantSetName.c_str(), variant_set_name_variants_pylist);// PyUnicode_FromString(sPrimName.c_str()));
 					
 
@@ -925,8 +989,9 @@ PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args)
 
 	}//endof for loop
 
-
-	UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] finished traversing stage getting variants...")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+	if (debug) {
+		UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage] finished traversing stage getting variants...")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+	}
 
 	//UE_LOG(LogPython, Warning, TEXT("[py_ue_traverse_usd_stage][post] print_fusd_prim_get_children_recursive()"));
 	//pxr::UsdPrim RootPrim = pUsdStage.GetPseudoRoot();
@@ -1097,6 +1162,7 @@ PyObject* py_ue_get_usd_prim_twin(ue_PyUObject* self, PyObject* args)
 
 }
 
+// ------------------
 PyObject* py_ue_update_stage(ue_PyUObject* self, PyObject* args)
 {
 	ue_py_check(self);
@@ -1122,6 +1188,7 @@ PyObject* py_ue_load_usd_stage(ue_PyUObject* self, PyObject* args)
 	if (!pUsdStageActor)
 		return PyErr_Format(PyExc_Exception, "uobject is not a UsdStageActor");
 
+	bool debug = false;
 	/*char *name;
 	if (!PyArg_ParseTuple(args, "s:get_actor_component", &name))
 	{
@@ -1142,14 +1209,18 @@ PyObject* py_ue_load_usd_stage(ue_PyUObject* self, PyObject* args)
 	// Check if this file exists
 	if (FPaths::FileExists(usdFilePath))
 	{
-		UE_LOG(LogPython, Warning, TEXT("[py_ue_load_usd_stage] usdFilePath exists...")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+		if (debug) {
+			UE_LOG(LogPython, Warning, TEXT("[py_ue_load_usd_stage] usdFilePath exists...")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+		}
 
 
 		bool isUsdPathValid = FPaths::ValidatePath(usdFilePath);
 
 		// This is valid so load it
 		if (isUsdPathValid) {
-			UE_LOG(LogPython, Warning, TEXT("[py_ue_load_usd_stage] usdFilePath is valid.")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+			if (debug) {
+				UE_LOG(LogPython, Warning, TEXT("[py_ue_load_usd_stage] usdFilePath is valid.")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+			}
 
 			//// ----------------------------------------
 			//// This is private so it can't be called
@@ -1204,18 +1275,269 @@ PyObject* py_ue_load_usd_stage(ue_PyUObject* self, PyObject* args)
 				FPropertyChangedEvent RootLayerPropertyChangedEvent(FindFieldChecked<FProperty>(pUsdStageActor->GetClass(), FName("RootLayer")));
 				pUsdStageActor->PostEditChangeProperty(RootLayerPropertyChangedEvent);
 
-				// LOADED in (1) memory, (2) USD Stage Window, and (3) Populated the UsdStageActor
-				std::string resultString = "Successfully loaded .USD";
-				//FSTring converted_std_str = UTF8_TO_TCHAR(str.c_str())
-				return PyUnicode_FromString(resultString.c_str()); // std::string.c_str() --> to UTF8
+				
 
 				//return PyUnicode_FromString(TCHAR_TO_UTF8(*usdFilePath));
 				//Py_RETURN_NONE;
 
 			}//endif 
 
+
+			// -------------------------
+			// Now try loading in memory
+			
+			bool getRedundantUsdData = false;
+
+			if (getRedundantUsdData) {
+				pxr::UsdStageRefPtr stagePtr = pxr::UsdStage::Open(TCHAR_TO_ANSI(*usdFilePath));// , pxr::UsdStage::InitialLoadSet(InitialLoadSet));
+
+				std::vector< std::string > UsdVariantSetsNames;
+				for (pxr::UsdPrim prim : pxr::UsdPrimRange(stagePtr->GetDefaultPrim())) {
+
+					const std::string& currentPrimName = prim.GetName();
+
+					if (prim.HasVariantSets()) {
+						if (debug) {
+							UE_LOG(LogPython, Warning, TEXT("[py_ue_get_usd_stage] %s"), ANSI_TO_TCHAR(currentPrimName.c_str())); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
+						}
+					
+						// Get the variant sets for this prim
+						pxr::UsdVariantSets UsdVariantSets = prim.GetVariantSets();
+
+						// populate the vector with variant set names
+						UsdVariantSets.GetNames(&UsdVariantSetsNames);
+
+						// Go through each variant set
+						for (std::string UsdVariantSetName : UsdVariantSetsNames)
+						{
+							if (debug) {
+								// print the variant name for this prim
+								UE_LOG(LogPython, Warning, TEXT("[py_ue_get_usd_stage][%s] %s"), ANSI_TO_TCHAR(currentPrimName.c_str()), UTF8_TO_TCHAR(UsdVariantSetName.c_str()));
+							}
+
+							if (prim) {
+								// Just get the variant set
+								pxr::UsdVariantSet UsdVariantSet = prim.GetVariantSet(UsdVariantSetName);
+
+								// check if this variant set is valid
+								if(UsdVariantSet.IsValid()){
+									// Get the UsdVariantSet Variant Names
+									//std::vector<std::string> UsdVariantNames = UsdVariantSet.GetVariantNames();
+
+									// --------------------------------
+									//std::string _variantSetName;
+									std::set<std::string> namesSet;
+								
+									TF_REVERSE_FOR_ALL(i, prim.GetPrimIndex().GetNodeRange()) {
+
+										//pxr::PcpLayerStackRefPtr layerStack = i.GetLayerStack();
+										pxr::SdfPath sdfPath = i->GetPath();
+
+										bool isPrimVariantSelectionPath = sdfPath.IsPrimVariantSelectionPath();
+										bool isPrimOrPrimVariantSelectionPath = sdfPath.IsPrimOrPrimVariantSelectionPath();
+										bool containsPrimVariantSelection = sdfPath.ContainsPrimVariantSelection();
+										//std::string asString = sdfPath.GetAsString();
+										const std::string asString = sdfPath.GetString();
+
+										// Is this a primitive or primitive variant selection SdfPath?
+										if (isPrimOrPrimVariantSelectionPath) {
+											//UE_LOG(LogPython, Warning, TEXT("\t\t isPrimOrPrimVariantSelectionPath: true"));
+
+											//// Does this contain a prim variant selection?
+											//if (containsPrimVariantSelection) {
+											//	UE_LOG(LogPython, Warning, TEXT("\t\t ------------- asString: %s"), UTF8_TO_TCHAR(asString.c_str()));
+											//	UE_LOG(LogPython, Warning, TEXT("\t\t containsPrimVariantSelection: true"));
+											//}
+
+											// Does this path have a variant selection for the prim?
+
+											if (debug) {
+												UE_LOG(LogPython, Warning, TEXT("\t\t  asString: %s ----------------------"), UTF8_TO_TCHAR(asString.c_str()));
+												UE_LOG(LogPython, Warning, TEXT("\t\t isPrimOrPrimVariantSelectionPath: true"));
+											}
+											if (isPrimVariantSelectionPath) {
+												if (debug) {
+													UE_LOG(LogPython, Warning, TEXT("\t\t isPrimVariantSelectionPath: true"));
+												}
+											}
+											else
+											{
+												//GetLayerStack
+												pxr::PcpLayerStackRefPtr layerStackRefPtr = pxr::PcpNodeRef(*i).GetLayerStack();
+
+
+
+												// SdfChildrenKeys is a struct with mappings
+												static const pxr::TfToken field = pxr::TfToken("variantChildren"); //SdfChildrenKeys->VariantChildren;
+												const pxr::SdfPath vsetPath = sdfPath.AppendVariantSelection(UsdVariantSetName, "");
+												pxr::TfTokenVector vsetNames;
+
+												// -----------------------------------------------
+												// SdfLayerRefPtrVector & 	GetLayers () const
+												// -----------------------------------------------
+												// Go through each layer
+												pxr::SdfLayerRefPtrVector sdfLayers = layerStackRefPtr->GetLayers();
+												for (auto const& layer : sdfLayers) {
+
+													// Check if it has a Field
+													if (layer->HasField(vsetPath, field, &vsetNames)) {
+														TF_FOR_ALL(name, vsetNames) {
+															//std::string const& resultName = name->GetString();
+															const std::string& resultName = name->GetString();
+															//result->insert(name->GetString());
+															if (debug) {
+																UE_LOG(LogPython, Warning, TEXT("\t\t [pre] resultName: %s"), UTF8_TO_TCHAR(resultName.c_str()));
+															}
+														}
+													}
+
+												}//for each SdfLayer
+
+
+												//PcpComposeSiteVariantSetOptions(layerStackRefPtr, sdfPath, UsdVariantSetName, &namesSet);
+
+												/*
+
+												static const TfToken field = SdfChildrenKeys->VariantChildren;
+												const SdfPath vsetPath = path.AppendVariantSelection(vsetName, "");
+												TfTokenVector vsetNames;
+												for (auto const &layer: layerStack->GetLayers()) {
+													if (layer->HasField(vsetPath, field, &vsetNames)) {
+														TF_FOR_ALL(name, vsetNames) {
+															result->insert(name->GetString());
+														}
+													}
+												}
+												*/
+
+												//std::vector<std::string> UsdVariantNames = std::vector<std::string>(namesSet.begin(), namesSet.end());
+												//PcpComposeSiteVariantSetOptions(*i, UsdVariantSetName, &namesSet);
+												if (debug) {
+													UE_LOG(LogPython, Warning, TEXT("\t\t [post] -----------------"));
+												}
+
+											}
+											
+
+												
+
+
+											/*
+											/// VariantSetOptions
+											PCP_API
+												void
+												PcpComposeSiteVariantSetOptions(PcpLayerStackRefPtr const& layerStack,
+													SdfPath const& path,
+													std::string const& vsetName,
+													std::set<std::string> *result);
+											inline void
+												PcpComposeSiteVariantSetOptions(PcpNodeRef const& node,
+													std::string const& vsetName,
+													std::set<std::string> *result)
+											{
+												return PcpComposeSiteVariantSetOptions(
+													node.GetLayerStack(), node.GetPath(), vsetName, result);
+											}
+											*/
+
+											////static const TfToken field = SdfChildrenKeys->VariantChildren;
+
+											//// const PcpLayerStackRefPtr &layerStack,
+											//const SdfLayerRefPtrVector& layers = layerStack->GetLayers();
+
+											//// Child prims
+											//pxr::TfTokenVector nameOrder;
+											//pxr::PcpTokenSet nameSet;
+
+											//nameOrder.clear();
+											//nameSet.clear();
+
+											//PcpComposeSiteChildNames(layers, prim->GetPath(),
+											//	SdfChildrenKeys->PropertyChildren,
+											//	&nameOrder, &nameSet);
+
+
+											/*
+											void PcpComposeSiteVariantSetOptions(PcpNodeRef const& node,
+												std::string const& vsetName,
+												std::set< std::string > *result
+											)
+											*/
+
+
+
+											//if (i->GetPath().IsPrimOrPrimVariantSelectionPath()) {
+											//	// CP_API void PcpComposeSiteVariantSelections(PcpLayerStackRefPtr const & layerStack, SdfPath const & path, SdfVariantSelectionMap * result)
+											//	PcpComposeSiteVariantSetOptions(*i, _variantSetName, &namesSet);
+											//	UE_LOG(LogPython, Warning, TEXT("\t\t _variantSetName: %s"), UTF8_TO_TCHAR(_variantSetName.c_str()));
+											//}
+
+										}//endif is prim or variant selection SdfPath?
+										
+
+										
+
+										
+
+										
+									}
+
+									
+								
+									/*
+									for (std::set<std::string>::iterator it = namesSet.begin(); it != namesSet.end(); ++it) {
+										std::string currentVariantName = *it;
+
+									}
+									
+									UE_LOG(LogPython, Warning, TEXT("[py_ue_get_usd_stage][%s][%s] %s"),
+										ANSI_TO_TCHAR(currentPrimName.c_str()),
+										UTF8_TO_TCHAR(UsdVariantSetName.c_str()),
+										UTF8_TO_TCHAR(currentVariantName.c_str())
+									);
+									*/
+
+								
+								
+
+									// std::vector<std::string> UsdVariantNames = std::vector<std::string>(namesSet.begin(), namesSet.end());
+									//std::vector<std::string>(namesSet.begin(), namesSet.end());
+								
+
+								}
+							
+							
+							}
+							else {
+								if (debug) {
+									UE_LOG(LogPython, Warning, TEXT("[py_ue_get_usd_stage]prim became invalid!"));
+								}
+
+							}//endif prim is valid
+						
+						
+
+						}//for each variant set name in variant sets
+
+
+					}// endif the prim has variants
+				
+
+				}// for each prim in stage
+
+			} //endif get redundant data---------------
+
+
+			// LOADED in (1) memory, (2) USD Stage Window, and (3) Populated the UsdStageActor
+			std::string resultString = "[py_ue_get_usd_stage] Successfully loaded .USD";
+			//FSTring converted_std_str = UTF8_TO_TCHAR(str.c_str())
+			return PyUnicode_FromString(resultString.c_str()); // std::string.c_str() --> to UTF8
+
+
+
 		}
 		else {
+			
 			UE_LOG(LogPython, Warning, TEXT("[py_ue_get_usd_stage] usdFilePath is NOT valid.")); //UTF8_TO_TCHAR(TCHAR_TO_UTF8(parent_name)));
 			Py_RETURN_NONE;
 
