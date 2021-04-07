@@ -535,10 +535,10 @@ static PyMethodDef unreal_engine_methods[] = {
 static PyMethodDef ue_PyUObject_methods[] = {
 
 	// UsdStageActor
-	
 	{ "load_usd_stage", (PyCFunction)py_ue_load_usd_stage, METH_VARARGS, "" },
 	{ "traverse_usd_stage", (PyCFunction)py_ue_traverse_usd_stage, METH_VARARGS, "" },
 	{ "get_variant_names_from_variant", (PyCFunction)py_ue_get_variant_names_from_variant, METH_VARARGS, "" },
+	{ "set_prim_variant_from_data", (PyCFunction)py_ue_set_prim_variant_from_data, METH_VARARGS, "" },
 	
 	{ "usd_reset", (PyCFunction)py_ue_usd_reset, METH_VARARGS, "" },
 	{ "update_stage", (PyCFunction)py_ue_update_stage, METH_VARARGS, "" },

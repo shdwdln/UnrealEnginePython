@@ -31,6 +31,7 @@ typedef struct
 PyObject* py_ue_load_usd_stage(ue_PyUObject*, PyObject*);
 PyObject* py_ue_traverse_usd_stage(ue_PyUObject* self, PyObject* args);
 PyObject* py_ue_get_variant_names_from_variant(ue_PyUObject* self, PyObject* args);
+PyObject* py_ue_set_prim_variant_from_data(ue_PyUObject* self, PyObject* args);
 
 
 PyObject* py_ue_new_uefusdstage(UE::FUsdStage);
